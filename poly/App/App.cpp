@@ -399,6 +399,8 @@ int SGX_CDECL main(int argc, char *argv[])
 				case 'f':
 					n_features = atoi(argv[++i]);
 					break;
+				case 'h':
+					usage(0);
 				default:
 					usage(1);
 			} 
