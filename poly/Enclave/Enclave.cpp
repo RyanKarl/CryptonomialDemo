@@ -446,31 +446,27 @@ void ecall_enclave_aggregate(uint64_t *poly_buf, size_t num_bytes, uint64_t *pk,
     x.reserve(matrix_dimensions);
 
     for(unsigned int i = 0; i < matrix_dimensions; i++){
-
 	    x.push_back(temp_vec_x);
-            x.back().resize(matrix_dimensions);
+    	x.back().resize(matrix_dimensions);
     }
 
     unsigned int offset = 0;
 
     for(unsigned int i = 0; i < matrix_dimensions; i++){	    
-	    
-	for(unsigned int j = i; j < matrix_dimensions; j++){
-
-		x[i][j] = z_final[offset].real();
-                x[j][i] = z_final[offset].real();
-		offset++;
-	}
-
+		for(unsigned int j = i; j < matrix_dimensions; j++){
+			x[i][j] = z_final[offset].real();
+            x[j][i] = z_final[offset].real();
+			offset++;
+		}
     }
 
     temp_vec_y = std::vector<double> (matrix_dimensions, 1.0);
     y.push_back(temp_vec_y);
 
-     std::vector<std::vector<double> > temp_xT = transpose(transpose_storage_vec);
-     std::vector<std::vector<double> > inversed = getInverse(x);
-     std::vector<std::vector<double> > temp = dot(inversed, temp_xT);
-     std::vector<std::vector<double> > coefficients = dot(y, temp);
+    std::vector<std::vector<double> > temp_xT = transpose(transpose_storage_vec);
+    std::vector<std::vector<double> > inversed = getInverse(x);
+    std::vector<std::vector<double> > temp = dot(inversed, temp_xT);
+    std::vector<std::vector<double> > coefficients = dot(y, temp);
 
     return;
 

@@ -367,6 +367,12 @@ void ocall_print_string(const char *str)
     printf("%s", str);
 }
 
+void usage(int e) {
+	cout << "Usage: ./app -n -f" << endl;
+	cout << "-n: # of users" << endl;
+	cout << "-f: # of features" << endl;
+	exit(e);
+}
 
 /* Application entry */
 int SGX_CDECL main(int argc, char *argv[])
@@ -381,16 +387,35 @@ int SGX_CDECL main(int argc, char *argv[])
         return -1; 
     }
 
+	// Parse Command Line Arguments
+    unsigned int n_users = 3;
+    unsigned int n_features = 4;
+	for (int i = 1; i < argc; i++) {
+		if (argv[i][0] == '-') {
+			switch (argv[i][1]) {
+				case 'n':
+					n_users = atoi(argv[++i]);
+					break;
+				case 'f':
+					n_features = atoi(argv[++i]);
+					break;
+				default:
+					usage(1);
+			} 
+		} else {
+			usage(1);
+		}
+	}
+
     double dec_time = 0;
     uint64_t ts = 0xDEADBEEF;
     unsigned int log_N = 10;
     uint64_t q = 0x7e00001; //Choose a prime for q with multiplication enabled
     ZZ Q(q);
     unsigned int plain_bits = 16;
-    unsigned int n_users = atoi(argv[1]);
-    unsigned int n_features = atoi(argv[2]);
-    unsigned int M = atoi(argv[3]);
+    //unsigned int M = atoi(argv[3]);
     //unsigned int M = ((atoi(argv[2])*2)*2);
+	unsigned int M = 512;
     Scheme s = BGV;
     long double b = 0.0f;
     long double scale_in = SCALE_DEFAULT;
@@ -402,7 +427,6 @@ int SGX_CDECL main(int argc, char *argv[])
 
     CKKSEncoder encoder = CKKSEncoder(M, delta);
     
-
     vector<vector<COMPL_FLOAT>> input_vec;
     vector<COMPL_FLOAT> input_temp;
     vector<vector<INT_T>> encoding_vec;
@@ -426,52 +450,52 @@ int SGX_CDECL main(int argc, char *argv[])
     std::string feature_str = "";
 
     for(int k = 0; k < n_users; k++){
-       plaintext_temp = {};
-       plaintext_temp.reserve(storage);
-       feature_str = "";
+        plaintext_temp = {};
+        plaintext_temp.reserve(storage);
+        feature_str = "";
         for(int i = 0; i < storage; i++){  
-		input_val = (float) (rand() % 10);
-		plaintext_temp.push_back(input_val);//((float) rand())/((float) RAND_MAX));
-		if(i < n_features){
-		    feature_str.append(std::to_string(input_val)+",");
-		}
+			input_val = (float) (rand() % 10);
+			plaintext_temp.push_back(input_val);//((float) rand())/((float) RAND_MAX));
+			if(i < n_features){
+		    	feature_str.append(std::to_string(input_val)+",");
+			}
         }
-	feature_vec.push_back(feature_str);
-	plaintext_matrix.push_back(plaintext_temp);
+		feature_vec.push_back(feature_str);
+		plaintext_matrix.push_back(plaintext_temp);
     }
 
 
     int counter = 0;
 
     //TODO Don't create extra ntl objects
-    cout << "About to do second loop\n";
+    //cout << "About to do second loop\n";
     for(int i = 0; i < 1; i++){
-        cout << i << "\n";
-	counter = 0;
-	input_temp.clear();	
+        //cout << i << "\n";
+		counter = 0;
+		input_temp.clear();	
         
-	for(int j = 0; j < plaintext_matrix[i].size(); j++){
-	    input_temp.push_back(COMPL_FLOAT(plaintext_matrix[i][j], 1));
-	    counter++;
-	}
+		for(int j = 0; j < plaintext_matrix[i].size(); j++){
+	    	input_temp.push_back(COMPL_FLOAT(plaintext_matrix[i][j], 1));
+	    	counter++;
+		}
 
-	if(counter < ((M/2)/2)){
+		if(counter < ((M/2)/2)){
             for(int k = counter; k < ((M/2)/2); k++){
                 input_temp.push_back(COMPL_FLOAT(((float) 0), 1));
                 counter++;
             }
-	}
+		}
 
-	input_vec.push_back(input_temp);
+		input_vec.push_back(input_temp);
 
         encoding_temp = encoder.encode(input_temp);
-	encoding_vec.push_back(encoding_temp);
+		encoding_vec.push_back(encoding_temp);
 
-	args_NTL_temp = encoding_to_ntl(encoding_temp, Q);
-	args_NTL.push_back(args_NTL_temp);
+		args_NTL_temp = encoding_to_ntl(encoding_temp, Q);
+		args_NTL.push_back(args_NTL_temp);
     
-	poly_tmp.from_ZZX(args_NTL[i]);
-	args_RNS.push_back(poly_tmp);
+		poly_tmp.from_ZZX(args_NTL[i]);
+		args_RNS.push_back(poly_tmp);
     }
 
     uint64_t* ctext_parms_buf = NULL;
@@ -505,7 +529,6 @@ int SGX_CDECL main(int argc, char *argv[])
     Polynomial poly_sum(&parms);
     poly_sum.zero();
 
-
     ct.reserve(n_users);
     double noise_time, enc_time;
     Polynomial output = agg_rns.enc(ts, args_RNS[0], secret_keys_rns[0], do_noise, noise_time, enc_time);
@@ -522,33 +545,30 @@ int SGX_CDECL main(int argc, char *argv[])
         //cout << i << std::endl;
         plaintext = (unsigned char *) feature_vec[i].c_str();
         memset(ciphertext, 0, 155);
-	ciphertext_len = encrypt(plaintext, std::strlen((char *)plaintext), key, iv, ciphertext);
-	start_t = clock();
-	status = ecall_enclave_AES(global_eid, ciphertext, ciphertext_len);
+		ciphertext_len = encrypt(plaintext, std::strlen((char *)plaintext), key, iv, ciphertext);
+		start_t = clock();
+		status = ecall_enclave_AES(global_eid, ciphertext, ciphertext_len);
         end_t = clock();
-	time_t_vec.push_back(end_t-start_t);
+		time_t_vec.push_back(end_t-start_t);
     }
 
     final_t = std::accumulate(time_t_vec.begin(), time_t_vec.end(), 0);
 
+    //cout << "AES_Time_(ns) " << final_t * 1000000000 / CLOCKS_PER_SEC << endl;
 
-    cout << "AES_Time_(ns) " << final_t * 1000000000 / CLOCKS_PER_SEC << endl;
-
-
-    start = std::chrono::high_resolution_clock::now();
+    //start = std::chrono::high_resolution_clock::now();
 
     for(unsigned int j = 0; j < n_users; j++){    
-	poly_sum += ct[0];
+		poly_sum += ct[0];
     }
 
 
     status = ecall_enclave_aggregate(global_eid, (uint64_t*)poly_sum.buffer(), poly_sum.size_in_bytes(), (uint64_t*)pk.buffer(), pk.size_in_bytes(), n_users, &return_val, sizeof(long double), n_features); 
 
-
     end = std::chrono::high_resolution_clock::now();
     auto noise_final = duration_cast<chrono::nanoseconds>(end-start).count();
 
-    cout << "Aggregation_Time_(ns) " << noise_final << endl;
+    cout << "Time (ns) " << noise_final << endl;
 
     sgx_destroy_enclave(global_eid);
 
