@@ -568,9 +568,9 @@ int SGX_CDECL main(int argc, char *argv[])
     status = ecall_enclave_aggregate(global_eid, (uint64_t*)poly_sum.buffer(), poly_sum.size_in_bytes(), (uint64_t*)pk.buffer(), pk.size_in_bytes(), n_users, &return_val, sizeof(long double), n_features); 
 
     end = std::chrono::high_resolution_clock::now();
-    auto noise_final = duration_cast<chrono::nanoseconds>(end-start).count();
+    auto noise_final = (double)duration_cast<chrono::microseconds>(end-start).count() / (double)1000000; 
 
-    cout << "Time (ns) " << noise_final << endl;
+    cout << "Time (s) " << noise_final << endl;
 
     sgx_destroy_enclave(global_eid);
 
